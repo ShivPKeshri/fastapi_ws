@@ -1,6 +1,6 @@
-from fastapi import FastAPI, Query
+from fastapi import Body, FastAPI, Path, Query
 from enum import Enum
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, HttpUrl
 from typing import Annotated
 
 
@@ -120,3 +120,86 @@ async def read_items(q: Annotated[str | None, Query(max_length=5)] = None):
 #         include_in_schema=False
 #     ),
 # ] = None,
+
+
+# Path Parameters and Numeric Validations
+# In the same way that you can declare more validations and metadata for query parameters with Query, you can declare the same type of validations and metadata for path parameters with Path.
+
+
+@app.get("/items/{item_id}")
+async def read_items(
+    item_id: Annotated[int, Path(title="The ID of the item to get")],
+    q: Annotated[str | None, Query(alias="item-query")] = None,
+):
+    results = {"item_id": item_id}
+    if q:
+        results.update({"q": q})
+    return results
+
+
+# Number validations: greater than or equal/ less than or equal
+# item_id: Annotated[int, Path(title="The ID of the item to get", gt=0, le=1000)]
+# size: Annotated[float, Query(gt=0, lt=10.5)]
+
+
+# Body Parameters : another JSON object- Nested Model
+# Body also has all the same extra validation and metadata parameters as Query,Path
+class Item(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    tax: float | None = None
+
+
+@app.put("/body/{item_id}")
+async def update_item(item_id: int, item: Annotated[Item, Body(embed=True)]):
+    results = {"item_id": item_id, "item": item}
+    return results
+
+
+# field from pydantic model
+class Item(BaseModel):
+    name: str
+    description: str | None = Field(
+        default=None, title="The description of the item", max_length=300
+    )
+    price: float = Field(gt=0, description="The price must be greater than zero")
+    tax: float | None = None
+
+
+@app.put("/field/{item_id}")
+async def update_item(item_id: int, item: Annotated[Item, Body(embed=True)]):
+    results = {"item_id": item_id, "item": item}
+    return results
+
+
+# You can use Pydantic's Field to declare extra validations and metadata for model attributes.
+# You can also use the extra keyword arguments to pass additional JSON Schema metadata.
+
+# Nested Models:
+
+
+class Image(BaseModel):
+    url: HttpUrl
+    name: str
+
+
+class Item(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    tax: float | None = None
+    tags: set[str] = set()
+    images: list[Image] | None = None
+
+
+class Offer(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    items: list[Item]
+
+
+@app.post("/offers/")
+async def create_offer(offer: Offer):
+    return offer
