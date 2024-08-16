@@ -1,4 +1,4 @@
-from fastapi import Body, FastAPI, Path, Query
+from fastapi import Body, Cookie, FastAPI, Header, Path, Query
 from enum import Enum
 from pydantic import BaseModel, Field, HttpUrl
 from typing import Annotated
@@ -203,3 +203,21 @@ class Offer(BaseModel):
 @app.post("/offers/")
 async def create_offer(offer: Offer):
     return offer
+
+
+# Header and Cookie Parameters
+@app.get("/header_cookies/")
+def header_cookies(
+    cookie_id: Annotated[str | None, Cookie()] = None,
+    x_token: Annotated[str | None, Header()] = None,
+    accept_encoding: Annotated[str | None, Header()] = None,
+    accept_language: Annotated[str | None, Header()] = None,
+    strange_header: Annotated[str | None, Header(convert_underscores=False)] = None,
+):
+    return {
+        "cookie_id": cookie_id,
+        "X-Token": x_token,
+        "accept_encoding": accept_encoding,
+        "accept_language": accept_language,
+        "strange_header": strange_header,
+    }
